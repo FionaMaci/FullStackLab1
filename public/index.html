@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Recipes</h1>
+    <table id="recipesTable">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Ingredients</th>
+                <th>Instructions</th>
+                <th>Cooking Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Recipes will be displayed here -->
+        </tbody>
+    </table>
+
+    <form id="newRecipeForm">
+        <h2>Add New Recipe</h2>
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" required><br>
+        <label for="ingredients">Ingredients (comma-separated):</label>
+        <input type="text" id="ingredients" name="ingredients" required><br>
+        <label for="instructions">Instructions:</label>
+        <textarea id="instructions" name="instructions" required></textarea><br>
+        <label for="cookingTime">Cooking Time (minutes):</label>
+        <input type="number" id="cookingTime" name="cookingTime" required><br>
+        <button type="submit">Add Recipe</button>
+    </form>
+
+    <script>
+        function fetchAndDisplayRecipes() {
+            fetch('/api/recipes')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#recipesTable tbody');
+                    tableBody.innerHTML = ''; // Clear existing table rows
+                    data.forEach(recipe => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${recipe.title}</td>
+                            <td>${recipe.ingredients.join(', ')}</td>
+                            <td>${recipe.instructions}</td>
+                            <td>${recipe.cookingTime} minutes</td>
+                            <td>
+                                <button onclick="updateRecipe('${recipe._id}', '${recipe.title}', '${recipe.ingredients.join(', ')}', '${recipe.instructions}', '${recipe.cookingTime}')">Update</button>
+                                <button onclick="deleteRecipe('${recipe._id}')">Delete</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching recipes:', error);
+                });
+        }
+
+        document.getElementById('newRecipeForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const newRecipe = {
+                title: document.getElementById('title').value,
+                ingredients: document.getElementById('ingredients').value.split(',').map(ingredient => ingredient.trim()),
+                instructions: document.getElementById('instructions').value,
+                cookingTime: document.getElementById('cookingTime').value
+            };
+
+            fetch('/api/recipes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newRecipe)
+            })
+            .then(response => response.json())
+            .then(data => {
+                fetchAndDisplayRecipes(); // Refresh the recipes table after adding a new recipe
+                document.getElementById('newRecipeForm').reset(); // Clear the form fields after submission
+            })
+            .catch(error => {
+                console.error('Error adding recipe:', error);
+            });
+        });
+
+        function deleteRecipe(id) {
+            if (confirm('Are you sure you want to delete this recipe?')) {
+                fetch(`/api/recipes/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(() => {
+                    fetchAndDisplayRecipes(); // Refresh the recipes table after deleting a recipe
+                })
+                .catch(error => {
+                    console.error('Error deleting recipe:', error);
+                });
+            }
+        }
+
+        function updateRecipe(id, title, ingredients, instructions, cookingTime) {
+            const updatedTitle = prompt('Enter updated title:', title);
+            const updatedIngredients = prompt('Enter updated ingredients (comma-separated):', ingredients);
+            const updatedInstructions = prompt('Enter updated instructions:', instructions);
+            const updatedCookingTime = prompt('Enter updated cooking time (minutes):', cookingTime);
+
+            if (updatedTitle && updatedIngredients && updatedInstructions && updatedCookingTime) {
+                const updatedRecipe = {
+                    title: updatedTitle,
+                    ingredients: updatedIngredients.split(',').map(ingredient => ingredient.trim()),
+                    instructions: updatedInstructions,
+                    cookingTime: parseInt(updatedCookingTime)
+                };
+
+                fetch(`/api/recipes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedRecipe)
+                })
+                .then(response => response.json())
+                .then(() => {
+                    fetchAndDisplayRecipes(); // Refresh the recipes table after updating a recipe
+                })
+                .catch(error => {
+                    console.error('Error updating recipe:', error);
+                });
+            }
+        }
+
+        fetchAndDisplayRecipes(); // Fetch and display recipes when the page loads
+    </script>
+</body>
+</html>
